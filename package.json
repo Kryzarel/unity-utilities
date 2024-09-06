@@ -1,0 +1,13 @@
+{
+  "name": "com.kryzarel.editor-utilities",
+  "version": "0.0.1",
+  "displayName": "Editor Utilities",
+  "description": "A set of editor utilities for Unity.",
+  "license": "MIT",
+  "author": {
+    "name": "Kryzarel"
+  },
+  "dependencies": {
+    "com.kryzarel.c-sharp-utilities": "0.0.1"
+  }
+}

@@ -1,0 +1,19 @@
+{
+    "name": "Kryz.EditorUtils.Editor",
+    "rootNamespace": "Kryz.EditorUtils.Editor",
+    "references": [
+        "Kryz.SharpUtils",
+        "Kryz.EditorUtils"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
