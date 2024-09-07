@@ -3,9 +3,9 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Kryz.EditorUtils.Editor
+namespace Kryz.EditorUtils
 {
-    [CustomPropertyDrawer(typeof(DrawContentsOnlyAttribute))]
+	[CustomPropertyDrawer(typeof(DrawContentsOnlyAttribute))]
 	public class DrawContentsOnlyPropertyDrawer : PropertyDrawer
 	{
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)

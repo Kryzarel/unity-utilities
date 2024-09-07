@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Kryz.SharpUtils;
 
-namespace Kryz.EditorUtils.Editor
+namespace Kryz.EditorUtils
 {
 	/// <summary>
 	/// Doesn't work very well for arrays since PropertyDrawers are applied to each element and not the array as a whole.
