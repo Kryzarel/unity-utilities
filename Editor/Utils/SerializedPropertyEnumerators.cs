@@ -32,7 +32,6 @@ namespace Kryz.EditorUtils
 		public readonly SerializedPropertyEnumerator GetEnumerator() => this;
 	}
 
-
 	public ref struct SerializedPropertyPathEnumerator
 	{
 		private ReadOnlySpan<char> path;

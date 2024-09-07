@@ -9,41 +9,64 @@ namespace Kryz.EditorUtils
 {
 	public static class SerializedPropertyUtils
 	{
+		public readonly struct SerializedPropertyInfo
+		{
+			public readonly SerializedProperty Property;
+			public readonly object Value;
+			public readonly Type Type;
+			public readonly FieldInfo? FieldInfo;
+
+			public SerializedPropertyInfo(SerializedProperty property, object value, Type type, FieldInfo? fieldInfo)
+			{
+				Property = property;
+				Value = value;
+				Type = type;
+				FieldInfo = fieldInfo;
+			}
+		}
+
 		/// <summary>
 		/// Unity can be really stupid sometimes... It doesn't have a way to retrieve the value of a SerializedProperty
 		/// when the value is a regular C# class. "objectReferenceValue" only works if the value is a Unity.Object.
 		/// not even "boxedValue", introduced in version 2022.1 works for this.
 		/// </summary>
-		public static object GetValue(this SerializedProperty property)
-		{
-			return property.GetValueAndType(out _);
-		}
+		public static object GetValue(this SerializedProperty property) => property.GetInfo().Value;
+		public static Type GetPropertyType(this SerializedProperty property) => property.GetInfo().Type;
+		public static FieldInfo? GetFieldInfo(this SerializedProperty property) => property.GetInfo().FieldInfo;
 
-		public static Type GetPropertyType(this SerializedProperty property)
-		{
-			property.GetValueAndType(out Type type);
-			return type;
-		}
-
-		public static object GetValueAndType(this SerializedProperty property, out Type type)
+		public static SerializedPropertyInfo GetInfo(this SerializedProperty property)
 		{
 			object obj = property.serializedObject.targetObject;
-			type = obj.GetType();
+			Type type = obj.GetType();
+			FieldInfo? fieldInfo = null;
 
 			foreach ((ReadOnlySpan<char> part, int index) in property.EnumeratePathParts())
 			{
 				const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-				FieldInfo fieldInfo = type.GetFieldInSubclasses(part.ToString(), bindingFlags);
+				fieldInfo = type.GetFieldInSubclasses(part.ToString(), bindingFlags);
+				if (fieldInfo == null) break;
+
 				obj = fieldInfo.GetValue(obj);
 				type = fieldInfo.FieldType;
 
-				if (obj is IList list)
+				if (obj is IList list && index >= 0)
 				{
 					obj = list[index];
 					type = type.GetElementType();
 				}
 			}
-			return obj;
+			return new SerializedPropertyInfo(property, obj, type, fieldInfo);
+		}
+
+		public static bool HasAttribute(this SerializedProperty property, Type attributeType, bool inherit = true)
+		{
+			FieldInfo? fieldInfo = property.GetFieldInfo();
+			return fieldInfo != null && fieldInfo.IsDefined(attributeType, inherit);
+		}
+
+		public static bool HasAttribute<T>(this SerializedProperty property, bool inherit = true)
+		{
+			return property.HasAttribute(typeof(T), inherit);
 		}
 
 		public static SerializedProperty FindProperty(this SerializedProperty property, string propertyName)
@@ -82,21 +105,26 @@ namespace Kryz.EditorUtils
 		/// This removes the indentation/foldout of a property and directly draws its contents. EditorGUI version (for custom PropertyDrawers).
 		/// </summary>
 		/// <returns>Total height of all the drawn properties.</returns>
-		public static float DrawContents(this SerializedProperty property, Rect position, GUIContent label)
+		public static float DrawContents(this SerializedProperty serializedProperty, Rect position, GUIContent label, Func<SerializedProperty, DrawType>? drawFunc = null)
 		{
 			float startingPosition = position.y;
-			int first = 0;
 			string labelText = label.text;
+			int first = 0;
 
-			foreach (SerializedProperty prop in property.EnumerateChildren())
+			foreach (SerializedProperty property in serializedProperty.EnumerateChildren())
 			{
-				using (new EditorGUI.DisabledScope("m_Script" == prop.propertyPath))
+				DrawType visibility = drawFunc?.Invoke(property) ?? DrawType.Draw;
+				if (visibility != DrawType.DontDraw)
 				{
-					label.text = labelText + ": " + prop.name;
-					position.y += (position.height + EditorGUIUtility.standardVerticalSpacing) * first;
-					position.height = EditorGUI.GetPropertyHeight(prop, label);
-					EditorGUI.PropertyField(position, prop, label, includeChildren: true);
-					first = 1;
+					bool isScript = property.propertyPath.Equals("m_Script", StringComparison.Ordinal);
+					using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
+					{
+						label.text = labelText + ": " + property.name;
+						position.y += (position.height + EditorGUIUtility.standardVerticalSpacing) * first;
+						position.height = EditorGUI.GetPropertyHeight(property, label);
+						EditorGUI.PropertyField(position, property, label, includeChildren: true);
+						first = 1;
+					}
 				}
 			}
 			return position.y + position.height - startingPosition;
@@ -105,19 +133,30 @@ namespace Kryz.EditorUtils
 		/// <summary>
 		/// This removes the indentation/foldout of a property and directly draws its contents. EditorGUILayout version (for custom Editors).
 		/// </summary>
-		public static void DrawContents(this SerializedProperty property)
+		public static void DrawContents(this SerializedProperty serializedProperty, Func<SerializedProperty, DrawType>? drawFunc = null)
 		{
-			SerializedObject obj = property.serializedObject;
+			foreach (SerializedProperty property in serializedProperty.EnumerateChildren())
+			{
+				DrawType visibility = drawFunc?.Invoke(property) ?? DrawType.Draw;
+				if (visibility != DrawType.DontDraw)
+				{
+					bool isScript = property.propertyPath.Equals("m_Script", StringComparison.Ordinal);
+					using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
+					{
+						EditorGUILayout.PropertyField(property, true);
+					}
+				}
+			}
+		}
+
+		public static void DrawProperties(this SerializedObject obj, Func<SerializedProperty, DrawType>? drawFunc = null)
+		{
 			EditorGUI.BeginChangeCheck();
 			obj.UpdateIfRequiredOrScript();
 
-			foreach (SerializedProperty prop in property.EnumerateChildren())
-			{
-				using (new EditorGUI.DisabledScope("m_Script" == prop.propertyPath))
-				{
-					EditorGUILayout.PropertyField(prop, true);
-				}
-			}
+			SerializedProperty iterator = obj.GetIterator();
+			iterator.Next(true);
+			iterator.DrawContents(drawFunc);
 
 			obj.ApplyModifiedProperties();
 			EditorGUI.EndChangeCheck();
@@ -125,25 +164,7 @@ namespace Kryz.EditorUtils
 
 		public static void DrawPropertiesExcluding(this SerializedObject obj, params string[] propertiesToExclude)
 		{
-			EditorGUI.BeginChangeCheck();
-			obj.UpdateIfRequiredOrScript();
-
-			SerializedProperty iterator = obj.GetIterator();
-			bool enterChildren = true;
-			while (iterator.NextVisible(enterChildren))
-			{
-				enterChildren = false;
-				if (Array.IndexOf(propertiesToExclude, iterator.name) < 0)
-				{
-					using (new EditorGUI.DisabledScope("m_Script" == iterator.propertyPath))
-					{
-						EditorGUILayout.PropertyField(iterator, true);
-					}
-				}
-			}
-
-			obj.ApplyModifiedProperties();
-			EditorGUI.EndChangeCheck();
+			obj.DrawProperties(property => Array.IndexOf(propertiesToExclude, property.name) < 0 ? DrawType.Disable : DrawType.Draw);
 		}
 
 		public static SerializedPropertyEnumerator EnumerateChildren(this SerializedProperty property)
