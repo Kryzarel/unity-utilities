@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
+using UnityEngine.UIElements;
 
 namespace Kryz.EditorUtils
 {
@@ -12,6 +13,9 @@ namespace Kryz.EditorUtils
 		private const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
 		private static readonly Assembly editorAssembly = typeof(DecoratorDrawer).Assembly;
 
+		private static readonly PropertyInfo propertyHandlerCacheProperty = editorAssembly.GetType("UnityEditor.ScriptAttributeUtility").GetProperty("propertyHandlerCache", bindingFlags);
+		private static readonly FieldInfo propertyHandlersField = editorAssembly.GetType("UnityEditor.PropertyHandlerCache").GetField("m_PropertyHandlers", bindingFlags);
+
 		private static readonly Type propertyHandlerType = editorAssembly.GetType("UnityEditor.PropertyHandler");
 		private static readonly PropertyInfo propertyDrawerProperty = propertyHandlerType.GetProperty("propertyDrawer", bindingFlags);
 		private static readonly PropertyInfo decoratorDrawersProperty = propertyHandlerType.GetProperty("decoratorDrawers", bindingFlags);
@@ -19,29 +23,25 @@ namespace Kryz.EditorUtils
 		private static readonly FieldInfo propertyDrawersField = propertyHandlerType.GetField("m_PropertyDrawers", bindingFlags);
 		private static readonly FieldInfo nestingLevelField = propertyHandlerType.GetField("m_NestingLevel", bindingFlags);
 
-		private static readonly IDictionary propertyHandlers;
+		private readonly IDictionary propertyHandlers;
 
 		private bool didInject;
 
-		static ReadOnlyDecoratorDrawer()
+		public ReadOnlyDecoratorDrawer()
 		{
-			PropertyInfo propertyHandlerCacheProperty = editorAssembly.GetType("UnityEditor.ScriptAttributeUtility").GetProperty("propertyHandlerCache", bindingFlags);
-			FieldInfo propertyHandlersField = editorAssembly.GetType("UnityEditor.PropertyHandlerCache").GetField("m_PropertyHandlers", bindingFlags);
-
 			object propertyHandlerCache = propertyHandlerCacheProperty.GetValue(null);
 			propertyHandlers = (IDictionary)propertyHandlersField.GetValue(propertyHandlerCache);
-		}
-
-		public override bool CanCacheInspectorGUI()
-		{
-			InjectReadOnlyDrawer();
-			return false;
 		}
 
 		public override float GetHeight()
 		{
 			InjectReadOnlyDrawer();
 			return 0;
+		}
+
+		public override VisualElement CreatePropertyGUI()
+		{
+			return base.CreatePropertyGUI();
 		}
 
 		private void InjectReadOnlyDrawer()
