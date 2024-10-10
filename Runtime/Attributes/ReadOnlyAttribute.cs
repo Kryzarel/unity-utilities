@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils
 {
 	public class ReadOnlyAttribute : PropertyAttribute
 	{

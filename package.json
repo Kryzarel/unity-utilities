@@ -1,7 +1,7 @@
 {
-  "name": "com.kryzarel.editor-utilities",
+  "name": "com.kryzarel.unity-utilities",
   "version": "0.0.1",
-  "displayName": "Kryz - Editor Utilities",
+  "displayName": "Kryz - Unity Utilities",
   "description": "A set of editor utilities for Unity.",
   "license": "MIT",
   "author": {

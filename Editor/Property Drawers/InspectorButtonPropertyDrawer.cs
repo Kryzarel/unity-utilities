@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils.Editor
 {
 	[CustomPropertyDrawer(typeof(InspectorButtonAttribute))]
 	public class InspectorButtonPropertyDrawer : PropertyDrawer

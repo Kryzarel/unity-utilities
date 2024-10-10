@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils
 {
 	/// <summary>
 	/// Hide this variable in the inspector unless a specific flag in an enum bitmask is set.

@@ -3,7 +3,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils.Editor
 {
 	[CustomPropertyDrawer(typeof(ReadOnlyAttribute))]
 	public class ReadOnlyPropertyDrawer : PropertyDrawer

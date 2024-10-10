@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils
 {
 	/// <summary>
 	/// This will turn a variable in the inspector into a button that calls a method when pressed.

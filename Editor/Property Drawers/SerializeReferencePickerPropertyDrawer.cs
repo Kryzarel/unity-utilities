@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils.Editor
 {
 	[CustomPropertyDrawer(typeof(SerializeReferencePickerAttribute))]
 	public class SerializeReferencePickerPropertyDrawer : PropertyDrawer

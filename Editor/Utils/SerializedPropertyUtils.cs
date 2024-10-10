@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using Kryz.SharpUtils;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils.Editor
 {
 	public static class SerializedPropertyUtils
 	{

@@ -1,4 +1,4 @@
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils.Editor
 {
 	public enum DrawType
 	{

@@ -1,7 +1,7 @@
 using System;
 using UnityEditor;
 
-namespace Kryz.EditorUtils
+namespace Kryz.UnityUtils.Editor
 {
 	public struct SerializedPropertyEnumerator
 	{

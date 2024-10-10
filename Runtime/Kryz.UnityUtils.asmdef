@@ -1,6 +1,6 @@
 {
-    "name": "Kryz.EditorUtils",
-    "rootNamespace": "Kryz.EditorUtils",
+    "name": "Kryz.UnityUtils",
+    "rootNamespace": "Kryz.UnityUtils",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
