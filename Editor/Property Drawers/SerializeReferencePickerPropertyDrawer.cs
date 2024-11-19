@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Kryz.SharpUtils;
+using Kryz.Utils;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;

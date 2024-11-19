@@ -3,7 +3,7 @@ using System.Collections;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using Kryz.SharpUtils;
+using Kryz.Utils;
 
 namespace Kryz.UnityUtils.Editor
 {

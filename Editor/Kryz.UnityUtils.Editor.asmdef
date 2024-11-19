@@ -2,7 +2,7 @@
     "name": "Kryz.UnityUtils.Editor",
     "rootNamespace": "Kryz.UnityUtils.Editor",
     "references": [
-        "Kryz.SharpUtils",
+        "Kryz.Utils",
         "Kryz.UnityUtils"
     ],
     "includePlatforms": [
