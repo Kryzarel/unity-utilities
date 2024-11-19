@@ -1,6 +1,6 @@
 {
   "name": "com.kryzarel.unity-utilities",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "displayName": "Kryz - Unity Utilities",
   "description": "A set of utilities and extension methods for Unity.",
   "license": "MIT",
@@ -8,6 +8,6 @@
     "name": "Kryzarel"
   },
   "dependencies": {
-    "com.kryzarel.c-sharp-utilities": "0.0.1"
+    "com.kryzarel.c-sharp-utilities": "0.0.0"
   }
 }
