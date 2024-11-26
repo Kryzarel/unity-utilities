@@ -1,7 +1,9 @@
 {
     "name": "Kryz.UnityUtils",
     "rootNamespace": "Kryz.UnityUtils",
-    "references": [],
+    "references": [
+        "Kryz.Utils"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
