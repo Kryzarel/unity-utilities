@@ -108,7 +108,6 @@ namespace Kryz.UnityUtils.Editor
 		public static float DrawContents(this SerializedProperty serializedProperty, Rect position, GUIContent label, Func<SerializedProperty, DrawType>? drawFunc = null)
 		{
 			float startingPosition = position.y;
-			string labelText = label.text;
 			int first = 0;
 
 			foreach (SerializedProperty property in serializedProperty.EnumerateChildren())
@@ -119,7 +118,7 @@ namespace Kryz.UnityUtils.Editor
 					bool isScript = property.propertyPath.Equals("m_Script", StringComparison.Ordinal);
 					using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
 					{
-						label.text = labelText + ": " + property.name;
+						label.text = property.displayName;
 						position.y += (position.height + EditorGUIUtility.standardVerticalSpacing) * first;
 						position.height = EditorGUI.GetPropertyHeight(property, label);
 						EditorGUI.PropertyField(position, property, label, includeChildren: true);

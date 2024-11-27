@@ -16,8 +16,8 @@ namespace Kryz.UnityUtils.Editor
 			public TypeGUIContent(Type? type)
 			{
 				Type = type;
-				text = type == null ? "null" : $"{type.Name} ({type.Namespace})";
-				tooltip = type == null ? "null" : type.FullName;
+				text = type == null ? "Null" : type.Name;
+				tooltip = type?.AssemblyQualifiedName;
 			}
 		}
 
@@ -48,7 +48,7 @@ namespace Kryz.UnityUtils.Editor
 					{
 						continue;
 					}
-					else if (t.IsAbstract && !flags.HasFlag((int)TypeFlags.Abstract))
+					else if (!t.IsInterface && t.IsAbstract && !flags.HasFlag((int)TypeFlags.Abstract))
 					{
 						continue;
 					}
@@ -58,13 +58,13 @@ namespace Kryz.UnityUtils.Editor
 					}
 					list.Add(new TypeGUIContent(t));
 				}
-				/* guiContentCache[type] =  */guiContent = list.ToArray();
+				guiContentCache[type] = guiContent = list.ToArray();
 			}
 
 			Type selectedType = Type.GetType(property.stringValue);
 			int selectedIndex = IndexOf(guiContent, selectedType);
 			selectedIndex = EditorGUI.Popup(position, selectedIndex, guiContent);
-			property.stringValue = selectedIndex < 0 ? "" : guiContent[selectedIndex].Type?.FullName;
+			property.stringValue = selectedIndex >= 0 ? guiContent[selectedIndex].Type?.AssemblyQualifiedName : null;
 		}
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -74,11 +74,6 @@ namespace Kryz.UnityUtils.Editor
 
 		private int IndexOf(TypeGUIContent[] contents, Type type)
 		{
-			if (type == null)
-			{
-				return -1;
-			}
-
 			for (int i = 0; i < contents.Length; i++)
 			{
 				if (contents[i].Type == type)

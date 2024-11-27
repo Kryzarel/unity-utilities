@@ -23,7 +23,7 @@ namespace Kryz.UnityUtils.Editor
 			VisualElement element = new();
 			foreach (SerializedProperty current in property.EnumerateChildren())
 			{
-				element.Add(new PropertyField(current, $"{property.displayName}: {current.displayName}"));
+				element.Add(new PropertyField(current, current.displayName));
 			}
 			return element;
 		}
