@@ -21,7 +21,7 @@ namespace Kryz.UnityUtils.Editor
 			}
 		}
 
-		private static readonly Dictionary<Type, TypeGUIContent[]> guiContentCache = new();
+		private readonly Dictionary<Type, TypeGUIContent[]> guiContentCache = new();
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
@@ -35,11 +35,20 @@ namespace Kryz.UnityUtils.Editor
 			Type type = pickerAttribute.Type;
 			int flags = (int)pickerAttribute.Flags;
 
-			if (!guiContentCache.TryGetValue(type, out TypeGUIContent[] guiContent))
+			TypeGUIContent[] guiContents = GetGUIContents(type, flags);
+
+			Type selectedType = Type.GetType(property.stringValue);
+			int selectedIndex = IndexOf(guiContents, selectedType);
+			selectedIndex = EditorGUI.Popup(position, selectedIndex, guiContents);
+			property.stringValue = selectedIndex >= 0 ? guiContents[selectedIndex].Type?.AssemblyQualifiedName : null;
+		}
+
+		private TypeGUIContent[] GetGUIContents(Type type, int flags)
+		{
+			if (!guiContentCache.TryGetValue(type, out TypeGUIContent[] guiContents))
 			{
 				TypeCache.TypeCollection typeCollection = TypeCache.GetTypesDerivedFrom(type);
 				List<TypeGUIContent> list = new(typeCollection.Count);
-				// list.Add(new TypeGUIContent(null));
 
 				for (int i = 0; i < typeCollection.Count; i++)
 				{
@@ -58,13 +67,9 @@ namespace Kryz.UnityUtils.Editor
 					}
 					list.Add(new TypeGUIContent(t));
 				}
-				guiContentCache[type] = guiContent = list.ToArray();
+				guiContentCache[type] = guiContents = list.ToArray();
 			}
-
-			Type selectedType = Type.GetType(property.stringValue);
-			int selectedIndex = IndexOf(guiContent, selectedType);
-			selectedIndex = EditorGUI.Popup(position, selectedIndex, guiContent);
-			property.stringValue = selectedIndex >= 0 ? guiContent[selectedIndex].Type?.AssemblyQualifiedName : null;
+			return guiContents;
 		}
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
