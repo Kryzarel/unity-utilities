@@ -113,17 +113,16 @@ namespace Kryz.UnityUtils.Editor
 			foreach (SerializedProperty property in serializedProperty.EnumerateChildren())
 			{
 				DrawType visibility = drawFunc?.Invoke(property) ?? DrawType.Draw;
-				if (visibility != DrawType.DontDraw)
+				if (visibility == DrawType.DontDraw) { continue; }
+
+				bool isScript = property.propertyPath.Equals("m_Script", StringComparison.Ordinal);
+				using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
 				{
-					bool isScript = property.propertyPath.Equals("m_Script", StringComparison.Ordinal);
-					using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
-					{
-						label.text = property.displayName;
-						position.y += (position.height + EditorGUIUtility.standardVerticalSpacing) * first;
-						position.height = EditorGUI.GetPropertyHeight(property, label);
-						EditorGUI.PropertyField(position, property, label, includeChildren: true);
-						first = 1;
-					}
+					label.text = property.displayName;
+					position.y += (position.height + EditorGUIUtility.standardVerticalSpacing) * first;
+					position.height = EditorGUI.GetPropertyHeight(property, label);
+					EditorGUI.PropertyField(position, property, label, includeChildren: true);
+					first = 1;
 				}
 			}
 			return position.y + position.height - startingPosition;
@@ -137,13 +136,12 @@ namespace Kryz.UnityUtils.Editor
 			foreach (SerializedProperty property in serializedProperty.EnumerateChildren())
 			{
 				DrawType visibility = drawFunc?.Invoke(property) ?? DrawType.Draw;
-				if (visibility != DrawType.DontDraw)
+				if (visibility == DrawType.DontDraw) { continue; }
+
+				bool isScript = property.propertyPath.Equals("m_Script", StringComparison.Ordinal);
+				using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
 				{
-					bool isScript = property.propertyPath.Equals("m_Script", StringComparison.Ordinal);
-					using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
-					{
-						EditorGUILayout.PropertyField(property, true);
-					}
+					EditorGUILayout.PropertyField(property, true);
 				}
 			}
 		}
