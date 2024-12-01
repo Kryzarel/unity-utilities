@@ -2,41 +2,35 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Kryz.Utils;
 
 namespace Kryz.UnityUtils.Editor
 {
 	public static class MemberFinder
 	{
-		public static MemberInfo[] FindMembers(this Type parentType, BindingFlags bindingFlags, MemberTypes memberTypes, Type type, bool allowDerivedTypes)
+		public static MemberInfo[] FindMembers(this Type type, BindingFlags bindingFlags, MemberTypes memberTypes, Type filterType, bool allowDerived)
 		{
-			MemberInfo[] members = parentType.FindMembers(memberTypes, bindingFlags, MemberFilter, null);
+			MemberInfo[] members = type.FindMembers(memberTypes, bindingFlags, MemberFilter, new Tuple<Type, bool>(filterType, allowDerived));
 			return members.Where(m => !m.IsDuplicate(members)).ToArray();
+		}
 
-			bool MemberFilter(MemberInfo member, object? filterCriteria)
-			{
-				return member.IsMemberTypeMatch(memberTypes) && member.IsTypeMatch(type, allowDerivedTypes);
-			}
+		private static bool MemberFilter(MemberInfo member, object? filterCriteria)
+		{
+			return filterCriteria is Tuple<Type, bool> data && member.IsTypeMatch(data.Item1, data.Item2);
 		}
 
 		private static bool IsDuplicate(this MemberInfo member, IReadOnlyList<MemberInfo> memberInfos)
 		{
 			if (member is MethodInfo methodInfo)
 			{
-				for (int i = 0; i < memberInfos.Count; i++)
+				foreach (MemberInfo m in memberInfos)
 				{
-					if (memberInfos[i] is PropertyInfo property && (property.GetMethod == methodInfo || property.SetMethod == methodInfo))
+					if (m is PropertyInfo property && (property.GetMethod == methodInfo || property.SetMethod == methodInfo))
 					{
 						return true;
 					}
 				}
 			}
 			return false;
-		}
-
-		private static bool IsMemberTypeMatch(this MemberInfo member, MemberTypes memberTypes)
-		{
-			return ((int)member.MemberType).HasFlag((int)memberTypes);
 		}
 
 		private static bool IsTypeMatch(this MemberInfo member, Type type, bool allowDerived)
