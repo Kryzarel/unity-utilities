@@ -89,16 +89,11 @@ namespace Kryz.UnityUtils.Editor
 		public static float GetContentsHeight(this SerializedProperty property, GUIContent label)
 		{
 			float position = 0;
-			float height = EditorGUI.GetPropertyHeight(property, label);
-			int first = 0;
-
 			foreach (SerializedProperty prop in property.EnumerateChildren())
 			{
-				position += (height + EditorGUIUtility.standardVerticalSpacing) * first;
-				height = EditorGUI.GetPropertyHeight(prop, label);
-				first = 1;
+				position += EditorGUI.GetPropertyHeight(prop, label);
 			}
-			return position + height;
+			return position;
 		}
 
 		/// <summary>
@@ -108,7 +103,6 @@ namespace Kryz.UnityUtils.Editor
 		public static float DrawContents(this SerializedProperty serializedProperty, Rect position, GUIContent label, Func<SerializedProperty, DrawType>? drawFunc = null)
 		{
 			float startingPosition = position.y;
-			int first = 0;
 
 			foreach (SerializedProperty property in serializedProperty.EnumerateChildren())
 			{
@@ -119,10 +113,9 @@ namespace Kryz.UnityUtils.Editor
 				using (new EditorGUI.DisabledScope(isScript || visibility == DrawType.Disable))
 				{
 					label.text = property.displayName;
-					position.y += (position.height + EditorGUIUtility.standardVerticalSpacing) * first;
 					position.height = EditorGUI.GetPropertyHeight(property, label);
+					position.y += position.height;
 					EditorGUI.PropertyField(position, property, label, includeChildren: true);
-					first = 1;
 				}
 			}
 			return position.y + position.height - startingPosition;

@@ -8,7 +8,7 @@ namespace Kryz.UnityUtils.Editor
 		private readonly SerializedProperty current;
 		private readonly SerializedProperty end;
 
-		private bool firstTime;
+		private bool enterChildren;
 
 		public readonly SerializedProperty Current => current;
 
@@ -16,17 +16,14 @@ namespace Kryz.UnityUtils.Editor
 		{
 			current = property.Copy();
 			end = property.GetEndProperty();
-			firstTime = true;
+			enterChildren = true;
 		}
 
 		public bool MoveNext()
 		{
-			if (firstTime)
-			{
-				firstTime = false;
-				return current.NextVisible(enterChildren: true);
-			}
-			return current.NextVisible(enterChildren: false) && !SerializedProperty.EqualContents(current, end);
+			bool success = current.NextVisible(enterChildren) && !SerializedProperty.EqualContents(current, end);
+			enterChildren = false;
+			return success;
 		}
 
 		public readonly SerializedPropertyEnumerator GetEnumerator() => this;
