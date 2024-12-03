@@ -62,16 +62,5 @@ namespace Kryz.UnityUtils.Editor
 		{
 			return allowImplictCast && memberType.IsImplicitlyCastableTo(type);
 		}
-
-		private static Type GetMemberType(this MemberInfo memberInfo)
-		{
-			return memberInfo switch
-			{
-				FieldInfo fieldInfo => fieldInfo.FieldType,
-				PropertyInfo propertyInfo => propertyInfo.PropertyType,
-				MethodInfo methodInfo => methodInfo.ReturnType,
-				_ => throw new NotImplementedException(),
-			};
-		}
 	}
 }
