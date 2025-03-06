@@ -22,9 +22,11 @@ namespace Kryz.UnityUtils.Editor
 			}
 		}
 
+		private static readonly MemberFilter filterFunc = MemberFilter;
+
 		public static MemberInfo[] FindMembers(this Type type, BindingFlags bindingFlags, MemberTypes memberTypes, Type filterType, bool allowDerived, bool allowImplictCast)
 		{
-			MemberInfo[] members = type.FindMembers(memberTypes, bindingFlags, MemberFilter, new FilterData(filterType, allowDerived, allowImplictCast));
+			MemberInfo[] members = type.FindMembers(memberTypes, bindingFlags, filterFunc, new FilterData(filterType, allowDerived, allowImplictCast));
 			return members.Where(m => !m.IsDuplicate(members)).ToArray();
 		}
 
@@ -33,7 +35,7 @@ namespace Kryz.UnityUtils.Editor
 			if (filterCriteria is FilterData data)
 			{
 				Type memberType = member.GetMemberType();
-				return memberType.IsTypeMatch(data.Type, data.AllowDerived) || memberType.IsCastable(data.Type, data.AllowImplictCast);
+				return memberType.IsTypeMatch(data.Type, data.AllowDerived) || memberType.IsImplicitlyCastable(data.Type, data.AllowImplictCast);
 			}
 			return false;
 		}
@@ -58,7 +60,7 @@ namespace Kryz.UnityUtils.Editor
 			return allowDerived ? type.IsAssignableFrom(memberType) : type == memberType;
 		}
 
-		private static bool IsCastable(this Type memberType, Type type, bool allowImplictCast)
+		private static bool IsImplicitlyCastable(this Type memberType, Type type, bool allowImplictCast)
 		{
 			return allowImplictCast && memberType.IsImplicitlyCastableTo(type);
 		}
