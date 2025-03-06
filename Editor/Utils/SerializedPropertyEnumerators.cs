@@ -29,6 +29,11 @@ namespace Kryz.UnityUtils.Editor
 		public readonly SerializedPropertyEnumerator GetEnumerator() => this;
 	}
 
+	/// <summary>
+	/// Uses spans to break down a <see cref="SerializedProperty.propertyPath"/> without allocations.
+	/// Is it worth the added complexity over "string.Split" or "string.Substring"?
+	/// Probably not, but it was a nice exercise to implement.
+	/// </summary>
 	public ref struct SerializedPropertyPathEnumerator
 	{
 		private ReadOnlySpan<char> path;

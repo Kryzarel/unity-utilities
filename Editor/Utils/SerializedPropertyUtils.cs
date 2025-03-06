@@ -26,9 +26,8 @@ namespace Kryz.UnityUtils.Editor
 		}
 
 		/// <summary>
-		/// Unity can be really stupid sometimes... It doesn't have a way to retrieve the value of a SerializedProperty
-		/// when the value is a regular C# class. "objectReferenceValue" only works if the value is a Unity.Object.
-		/// not even "boxedValue", introduced in version 2022.1 works for this.
+		/// Unity can be really stupid sometimes... It doesn't have a way to retrieve the value of a SerializedProperty when the value is a regular C# class.
+		/// "objectReferenceValue" only works if the value is a Unity.Object. Not even "boxedValue", introduced in version 2022.1 works for this.
 		/// </summary>
 		public static object GetValue(this SerializedProperty property) => property.GetInfo().Value;
 		public static Type GetPropertyType(this SerializedProperty property) => property.GetInfo().Type;
