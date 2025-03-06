@@ -120,12 +120,12 @@ namespace Kryz.UnityUtils.Editor
 
 		private static GenericMenu GetTypesMenu(IReadOnlyList<Type?> propertyTypes, TypeCache.TypeCollection types, GenericMenu.MenuFunction2 menuFunction)
 		{
-			GenericMenu menu = new GenericMenu();
+			GenericMenu menu = new();
 			foreach (Type type in types)
 			{
 				if (!type.IsAbstract)
 				{
-					menu.AddItem(GetMenuGuiContent(type), on: propertyTypes.Contains(type), menuFunction, type);
+					menu.AddItem(GetMenuGuiContent(type), on: propertyTypes.Contains<Type?, IReadOnlyList<Type?>>(type), menuFunction, type);
 				}
 			}
 			return menu;
@@ -147,7 +147,7 @@ namespace Kryz.UnityUtils.Editor
 
 			for (int i = 0; i < objects.Length; i++)
 			{
-				SerializedObject serializedObject = new SerializedObject(objects[i]);
+				SerializedObject serializedObject = new(objects[i]);
 				properties[i] = serializedObject.FindProperty(property.propertyPath);
 				types[i] = properties[i]?.managedReferenceValue?.GetType();
 			}
