@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using Kryz.Utils;
+using Kryz.Collections;
 using UnityEditor;
 
 namespace Kryz.UnityUtils.Editor
@@ -10,17 +10,9 @@ namespace Kryz.UnityUtils.Editor
 		public static Type[] FindDerivedTypes(this Type type, TypeFlags typeFlags)
 		{
 			TypeCache.TypeCollection typeCollection = TypeCache.GetTypesDerivedFrom(type);
-			List<Type> types = new(typeCollection.Count);
-
-			for (int i = 0; i < typeCollection.Count; i++)
-			{
-				Type t = typeCollection[i];
-				if (t.IsTypeMatch(typeFlags))
-				{
-					types.Add(t);
-				}
-			}
-			return types.ToArray();
+			using NonAllocList<Type> list = new(typeCollection.Count);
+			list.AddRangeWhere<Type, NonAllocList<Type>, TypeCache.TypeCollection>(typeCollection, t => t.IsTypeMatch(typeFlags));
+			return list.ToArray<Type, NonAllocList<Type>>();
 		}
 
 		private static bool IsTypeMatch(this Type t, TypeFlags typeFlags)
