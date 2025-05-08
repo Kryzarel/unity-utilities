@@ -11,7 +11,13 @@ namespace Kryz.UnityUtils.Editor
 		{
 			TypeCache.TypeCollection typeCollection = TypeCache.GetTypesDerivedFrom(type);
 			using NonAllocList<Type> list = new(typeCollection.Count);
-			list.AddRangeWhere_IList<Type, NonAllocList<Type>, TypeCache.TypeCollection>(typeCollection, t => t.IsTypeMatch(typeFlags));
+			foreach (var item in typeCollection)
+			{
+				if (item.IsTypeMatch(typeFlags))
+				{
+					list.Add(item);
+				}
+			}
 			return list.ToArray<Type, NonAllocList<Type>>();
 		}
 
