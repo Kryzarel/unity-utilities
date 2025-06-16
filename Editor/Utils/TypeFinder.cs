@@ -11,14 +11,14 @@ namespace Kryz.UnityUtils.Editor
 		{
 			TypeCache.TypeCollection typeCollection = TypeCache.GetTypesDerivedFrom(type);
 			using NonAllocList<Type> list = new(typeCollection.Count);
-			foreach (var item in typeCollection)
+			foreach (Type item in typeCollection)
 			{
 				if (item.IsTypeMatch(typeFlags))
 				{
 					list.Add(item);
 				}
 			}
-			return list.ToArray<Type, NonAllocList<Type>>();
+			return list.ToArray();
 		}
 
 		private static bool IsTypeMatch(this Type t, TypeFlags typeFlags)
