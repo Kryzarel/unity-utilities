@@ -10,7 +10,7 @@ namespace Kryz.UnityUtils.Editor
 		public static Type[] FindDerivedTypes(this Type type, TypeFlags typeFlags)
 		{
 			TypeCache.TypeCollection typeCollection = TypeCache.GetTypesDerivedFrom(type);
-			using NonAllocList<Type> list = new(typeCollection.Count);
+			using PooledList<Type> list = PooledList<Type>.Rent(typeCollection.Count);
 			foreach (Type item in typeCollection)
 			{
 				if (item.IsTypeMatch(typeFlags))
