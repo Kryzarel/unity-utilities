@@ -7,7 +7,7 @@ using Kryz.Utils;
 
 namespace Kryz.UnityUtils.Editor
 {
-	public static class SerializedPropertyUtils
+	public static class SerializedPropertyExtensions
 	{
 		public readonly struct SerializedPropertyInfo
 		{

@@ -26,6 +26,12 @@ namespace Kryz.UnityUtils.Editor
 			return success;
 		}
 
+		public readonly void Dispose()
+		{
+			current.Dispose();
+			end.Dispose();
+		}
+
 		public readonly SerializedPropertyEnumerator GetEnumerator() => this;
 	}
 
@@ -65,9 +71,9 @@ namespace Kryz.UnityUtils.Editor
 			}
 			else
 			{
-				ReadOnlySpan<char> part = path.Slice(0, indexOfDot);
+				ReadOnlySpan<char> part = path[..indexOfDot];
 
-				if (path.Slice(indexOfDot).StartsWith(".Array.data[", StringComparison.Ordinal))
+				if (path[indexOfDot..].StartsWith(".Array.data[", StringComparison.Ordinal))
 				{
 					int bracket1 = path.IndexOf('[');
 					int bracket2 = path.IndexOf(']');
