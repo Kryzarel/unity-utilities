@@ -1,6 +1,5 @@
 using System;
 using Kryz.Utils;
-using Kryz.Collections;
 using UnityEditor;
 
 namespace Kryz.UnityUtils.Editor

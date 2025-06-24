@@ -3,8 +3,7 @@
     "rootNamespace": "Kryz.UnityUtils.Editor",
     "references": [
         "Kryz.Utils",
-        "Kryz.UnityUtils",
-        "Kryz.Collections"
+        "Kryz.UnityUtils"
     ],
     "includePlatforms": [
         "Editor"
