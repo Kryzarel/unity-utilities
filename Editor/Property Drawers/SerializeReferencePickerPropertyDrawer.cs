@@ -10,19 +10,22 @@ namespace Kryz.UnityUtils.Editor
 	[CustomPropertyDrawer(typeof(SerializeReferencePickerAttribute))]
 	public class SerializeReferencePickerPropertyDrawer : PropertyDrawer
 	{
-		private readonly HashSet<object> existingReferences = new();
+		// private readonly HashSet<object> existingReferences = new();
+		private readonly Dictionary<object, string> existing = new();
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
+			SerializedPropertyExtensions.SerializedPropertyInfo info = property.GetInfo();
+
 			var pickerAttribute = (SerializeReferencePickerAttribute)attribute;
-			if (!pickerAttribute.AllowDuplicates)
+			if (!pickerAttribute.AllowDuplicates && IsDuplicate(info))
 			{
-				RemoveDuplicates(property);
+				SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 			}
 
 			// fieldInfo.FieldType doesn't work if the object is in a list or array
 			// property.managedReferenceFieldTypename gives you the type as a string and formatted in a really stupid way
-			Type baseType = property.GetPropertyType();
+			Type baseType = info.Type;
 			Type? currentType = property.managedReferenceValue?.GetType();
 
 			// Try to avoid nulls (if the base type has no concrete implementations it can still happen)
@@ -56,26 +59,36 @@ namespace Kryz.UnityUtils.Editor
 			return EditorGUI.GetPropertyHeight(property, includeChildren: true);
 		}
 
-		private void RemoveDuplicates(SerializedProperty property)
+		private bool IsDuplicate(SerializedPropertyExtensions.SerializedPropertyInfo info)
 		{
-			existingReferences.Clear();
-			SerializedObject serializedObject = property.serializedObject;
-			SerializedProperty current = serializedObject.GetIterator();
-			do
+			if (existing.TryGetValue(info.Value, out string propertyPath))
 			{
-				if (current.propertyType == SerializedPropertyType.ManagedReference)
-				{
-					object obj = current.managedReferenceValue;
-					// If we can't add the object, that means it's already in the set, therefore it's a duplicate and we should remove it
-					if (obj != null && !existingReferences.Add(obj))
-					{
-						SetManagedReferenceValue(current, null, overwriteIfSameType: true);
-					}
-				}
+				return !propertyPath.Equals(info.Property.propertyPath, StringComparison.OrdinalIgnoreCase);
 			}
-			while (current.Next(enterChildren: true));
-			existingReferences.Clear();
+			existing[info.Property] = info.Property.propertyPath;
+			return false;
 		}
+
+		// private void RemoveDuplicates(SerializedProperty property)
+		// {
+		// 	existingReferences.Clear();
+		// 	SerializedObject serializedObject = property.serializedObject;
+		// 	SerializedProperty current = serializedObject.GetIterator();
+		// 	do
+		// 	{
+		// 		if (current.propertyType == SerializedPropertyType.ManagedReference)
+		// 		{
+		// 			object obj = current.managedReferenceValue;
+		// 			// If we can't add the object, that means it's already in the set, therefore it's a duplicate and we should remove it
+		// 			if (obj != null && !existingReferences.Add(obj))
+		// 			{
+		// 				SetManagedReferenceValue(current, null, overwriteIfSameType: true);
+		// 			}
+		// 		}
+		// 	}
+		// 	while (current.Next(enterChildren: true));
+		// 	existingReferences.Clear();
+		// }
 
 		private static Type? FirstOrDefault(TypeCache.TypeCollection types, Func<Type, bool> predicate)
 		{
