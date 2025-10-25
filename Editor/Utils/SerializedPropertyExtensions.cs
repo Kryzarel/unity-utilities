@@ -15,13 +15,17 @@ namespace Kryz.UnityUtils.Editor
 			public readonly object Value;
 			public readonly Type Type;
 			public readonly FieldInfo? FieldInfo;
+			public readonly IList? List;
+			public readonly int Index;
 
-			public SerializedPropertyInfo(SerializedProperty property, object value, Type type, FieldInfo? fieldInfo)
+			public SerializedPropertyInfo(SerializedProperty property, object value, Type type, FieldInfo? fieldInfo, IList? list, int index)
 			{
 				Property = property;
 				Value = value;
 				Type = type;
 				FieldInfo = fieldInfo;
+				List = list;
+				Index = index;
 			}
 		}
 
@@ -38,8 +42,10 @@ namespace Kryz.UnityUtils.Editor
 			object obj = property.serializedObject.targetObject;
 			Type type = obj.GetType();
 			FieldInfo? fieldInfo = null;
+			IList? list = null;
+			int index = 0;
 
-			foreach ((ReadOnlySpan<char> part, int index) in property.EnumeratePathParts())
+			foreach ((ReadOnlySpan<char> part, int i) in property.EnumeratePathParts())
 			{
 				const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 				fieldInfo = type.GetFieldInSubclasses(part.ToString(), bindingFlags);
@@ -48,13 +54,15 @@ namespace Kryz.UnityUtils.Editor
 				obj = fieldInfo.GetValue(obj);
 				type = fieldInfo.FieldType;
 
-				if (obj is IList list && index >= 0)
+				if (obj is IList l && i >= 0)
 				{
-					obj = list[index];
+					list = l;
+					index = i;
+					obj = l[i];
 					type = type.GetElementType();
 				}
 			}
-			return new SerializedPropertyInfo(property, obj, type, fieldInfo);
+			return new SerializedPropertyInfo(property, obj, type, fieldInfo, list, index);
 		}
 
 		public static bool HasAttribute(this SerializedProperty property, Type attributeType, bool inherit = true)
