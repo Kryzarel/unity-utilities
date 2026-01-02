@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 using Object = UnityEngine.Object;
 
 namespace Kryz.UnityUtils
@@ -8,11 +7,33 @@ namespace Kryz.UnityUtils
 	[Serializable]
 	public struct SerializeInterface<T> where T : class
 	{
-		[SerializeField, FormerlySerializedAs("component")]
+		[SerializeField]
 		private Object? unityObject;
 
 		private T? value;
 
-		public T? Value => value ??= unityObject as T;
+		public T? Value
+		{
+			get
+			{
+				if (value == null || (object)value != unityObject)
+				{
+					value = unityObject as T;
+				}
+				return value;
+			}
+
+			set
+			{
+				unityObject = value as Object;
+				this.value = unityObject as T;
+			}
+		}
+
+		public SerializeInterface(T value)
+		{
+			unityObject = value as Object;
+			this.value = unityObject as T;
+		}
 	}
 }
