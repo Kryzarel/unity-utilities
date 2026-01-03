@@ -10,30 +10,15 @@ namespace Kryz.UnityUtils
 		[SerializeField]
 		private Object? unityObject;
 
-		private T? value;
-
 		public T? Value
 		{
-			get
-			{
-				if (value == null || (object)value != unityObject)
-				{
-					value = unityObject as T;
-				}
-				return value;
-			}
-
-			set
-			{
-				unityObject = value as Object;
-				this.value = unityObject as T;
-			}
+			readonly get => unityObject as T;
+			set => unityObject = value as Object;
 		}
 
 		public SerializeInterface(T value)
 		{
 			unityObject = value as Object;
-			this.value = unityObject as T;
 		}
 	}
 }
