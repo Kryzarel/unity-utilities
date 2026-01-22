@@ -10,7 +10,6 @@ namespace Kryz.UnityUtils.Editor
 	[CustomPropertyDrawer(typeof(SerializeReferencePickerAttribute))]
 	public class SerializeReferencePickerPropertyDrawer : PropertyDrawer
 	{
-		// private readonly HashSet<object> existingReferences = new();
 		private readonly Dictionary<object, string> existing = new();
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -18,7 +17,7 @@ namespace Kryz.UnityUtils.Editor
 			SerializedPropertyExtensions.SerializedPropertyInfo info = property.GetInfo();
 
 			var pickerAttribute = (SerializeReferencePickerAttribute)attribute;
-			if (!pickerAttribute.AllowDuplicates && IsDuplicate(info))
+			if (pickerAttribute.RemoveDuplicates && IsDuplicate(info))
 			{
 				SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 			}
@@ -28,13 +27,10 @@ namespace Kryz.UnityUtils.Editor
 			Type baseType = info.Type;
 			Type? currentType = property.managedReferenceValue?.GetType();
 
-			// Try to avoid nulls (if the base type has no concrete implementations it can still happen)
-			// Also reassign if the type of the variable changed and the serialized reference no longer matches the variable type
-			if (property.managedReferenceValue == null || !baseType.IsAssignableFrom(currentType))
+			// Reassign if the type of the variable changed and the serialized reference no longer matches the variable type
+			if (!baseType.IsAssignableFrom(currentType))
 			{
-				TypeCache.TypeCollection types = TypeCache.GetTypesDerivedFrom(baseType);
-				Type? type = FirstOrDefault(types, t => !t.IsAbstract);
-				SetManagedReferenceValue(property, type, overwriteIfSameType: false);
+				SetManagedReferenceValue(property, null, overwriteIfSameType: false);
 			}
 
 			Color color = GUI.backgroundColor;
@@ -43,9 +39,10 @@ namespace Kryz.UnityUtils.Editor
 			Rect buttonRect = GetButtonRect(position);
 			GetPropertiesAndTypesForTargetObjects(property, out SerializedProperty[] properties, out Type?[] propertyTypes);
 
-			if (GUI.Button(buttonRect, GetButtonGuiContent(propertyTypes)))
+			TypeCache.TypeCollection types = TypeCache.GetTypesDerivedFrom(baseType);
+
+			if (GUI.Button(buttonRect, GetButtonGuiContent(types, propertyTypes)))
 			{
-				TypeCache.TypeCollection types = TypeCache.GetTypesDerivedFrom(baseType);
 				GenericMenu menu = GetTypesMenu(propertyTypes, types, obj => MenuFunction(properties, (Type)obj));
 				menu.DropDown(buttonRect);
 			}
@@ -61,43 +58,12 @@ namespace Kryz.UnityUtils.Editor
 
 		private bool IsDuplicate(SerializedPropertyExtensions.SerializedPropertyInfo info)
 		{
-			if (existing.TryGetValue(info.Value, out string propertyPath))
+			if (info.Value != null && existing.TryGetValue(info.Value, out string propertyPath))
 			{
 				return !propertyPath.Equals(info.Property.propertyPath, StringComparison.OrdinalIgnoreCase);
 			}
 			existing[info.Property] = info.Property.propertyPath;
 			return false;
-		}
-
-		// private void RemoveDuplicates(SerializedProperty property)
-		// {
-		// 	existingReferences.Clear();
-		// 	SerializedObject serializedObject = property.serializedObject;
-		// 	SerializedProperty current = serializedObject.GetIterator();
-		// 	do
-		// 	{
-		// 		if (current.propertyType == SerializedPropertyType.ManagedReference)
-		// 		{
-		// 			object obj = current.managedReferenceValue;
-		// 			// If we can't add the object, that means it's already in the set, therefore it's a duplicate and we should remove it
-		// 			if (obj != null && !existingReferences.Add(obj))
-		// 			{
-		// 				SetManagedReferenceValue(current, null, overwriteIfSameType: true);
-		// 			}
-		// 		}
-		// 	}
-		// 	while (current.Next(enterChildren: true));
-		// 	existingReferences.Clear();
-		// }
-
-		private static Type? FirstOrDefault(TypeCache.TypeCollection types, Func<Type, bool> predicate)
-		{
-			foreach (Type t in types)
-			{
-				if (predicate(t))
-					return t;
-			}
-			return default;
 		}
 
 		private static void SetManagedReferenceValue(SerializedProperty property, Type? type, bool overwriteIfSameType)
@@ -116,29 +82,40 @@ namespace Kryz.UnityUtils.Editor
 			return new Rect(position.x + width, position.y, position.width - width, height);
 		}
 
-		private static GUIContent GetButtonGuiContent(IReadOnlyList<Type?> types)
+		private static GUIContent GetGuiContent(Type? type)
 		{
-			if (AreAllEqual(types))
-			{
-				Type? type = types[0];
-				return new GUIContent(type?.Name ?? "No implementations", type?.FullName);
-			}
-			return new GUIContent("Multiple values");
+			return new GUIContent(type?.Name ?? "Null", type?.FullName);
 		}
 
-		private static GUIContent GetMenuGuiContent(Type type)
+		private static GUIContent GetButtonGuiContent(TypeCache.TypeCollection derivedTypes, IReadOnlyList<Type?> propertyTypes)
 		{
-			return new GUIContent(type?.Name ?? "Null", type?.FullName ?? "Null");
+			if (derivedTypes.Count == 0)
+			{
+				return new GUIContent("No implementations");
+			}
+
+			for (int i = 1; i < propertyTypes.Count; i++)
+			{
+				if (propertyTypes[i] != propertyTypes[i - 1])
+				{
+					return new GUIContent("Multiple values");
+				}
+			}
+
+			return GetGuiContent(propertyTypes[0]);
 		}
 
 		private static GenericMenu GetTypesMenu(IReadOnlyList<Type?> propertyTypes, TypeCache.TypeCollection types, GenericMenu.MenuFunction2 menuFunction)
 		{
 			GenericMenu menu = new();
+
+			menu.AddItem(GetGuiContent(null), on: propertyTypes.Contains<Type?, IReadOnlyList<Type?>>(null), menuFunction, null);
+
 			foreach (Type type in types)
 			{
 				if (!type.IsAbstract)
 				{
-					menu.AddItem(GetMenuGuiContent(type), on: propertyTypes.Contains<Type?, IReadOnlyList<Type?>>(type), menuFunction, type);
+					menu.AddItem(GetGuiContent(type), on: propertyTypes.Contains<Type?, IReadOnlyList<Type?>>(type), menuFunction, type);
 				}
 			}
 			return menu;
@@ -164,18 +141,6 @@ namespace Kryz.UnityUtils.Editor
 				properties[i] = serializedObject.FindProperty(property.propertyPath);
 				types[i] = properties[i]?.managedReferenceValue?.GetType();
 			}
-		}
-
-		private static bool AreAllEqual<T>(IReadOnlyList<T?> list) where T : class
-		{
-			for (int i = 1; i < list.Count; i++)
-			{
-				if (list[i] != list[i - 1])
-				{
-					return false;
-				}
-			}
-			return true;
 		}
 	}
 }

@@ -45,21 +45,29 @@ namespace Kryz.UnityUtils.Editor
 			IList? list = null;
 			int index = 0;
 
-			foreach ((ReadOnlySpan<char> part, int i) in property.EnumeratePathParts())
+			foreach (string part in property.propertyPath.Replace(".Array.data[", "[").Split('.'))
 			{
+				int bracketIndex = part.IndexOf('[');
+				string fieldName = bracketIndex < 0 ? part : part[..bracketIndex];
+
 				const BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-				fieldInfo = type.GetFieldInSubclasses(part.ToString(), bindingFlags);
+				fieldInfo = type.GetFieldInSubclasses(fieldName, bindingFlags);
 				if (fieldInfo == null) break;
 
 				obj = fieldInfo.GetValue(obj);
 				type = fieldInfo.FieldType;
 
-				if (obj is IList l && i >= 0)
+				if (obj is IList l)
 				{
-					list = l;
-					index = i;
-					obj = l[i];
-					type = type.GetElementType();
+					ReadOnlySpan<char> span = part.AsSpan();
+					span = span[(bracketIndex + 1)..span.IndexOf(']')];
+
+					if (int.TryParse(span, out index) && index >= 0)
+					{
+						list = l;
+						obj = l[index];
+						type = type.GetElementType();
+					}
 				}
 			}
 			return new SerializedPropertyInfo(property, obj, type, fieldInfo, list, index);
@@ -82,13 +90,14 @@ namespace Kryz.UnityUtils.Editor
 			SerializedProperty? prop = null;
 			SerializedProperty result = serializedObject.FindProperty(propertyName);
 
-			foreach (ReadOnlySpan<char> part in property.EnumeratePathParts())
+			foreach (string part in property.propertyPath.Replace(".Array.data[", "[").Split('.'))
 			{
 				SerializedProperty? potentialResult = prop?.FindPropertyRelative(propertyName);
 				if (potentialResult != null) result = potentialResult;
 
-				string partStr = part.ToString();
-				prop = prop == null ? serializedObject.FindProperty(partStr) : prop.FindPropertyRelative(partStr);
+				int bracketIndex = part.IndexOf('[');
+				string path = bracketIndex < 0 ? part : part[..bracketIndex];
+				prop = prop == null ? serializedObject.FindProperty(path) : prop.FindPropertyRelative(path);
 			}
 			return result;
 		}
@@ -167,11 +176,6 @@ namespace Kryz.UnityUtils.Editor
 		public static SerializedPropertyEnumerator EnumerateChildren(this SerializedProperty property)
 		{
 			return new SerializedPropertyEnumerator(property);
-		}
-
-		public static SerializedPropertyPathEnumerator EnumeratePathParts(this SerializedProperty property)
-		{
-			return new SerializedPropertyPathEnumerator(property.propertyPath);
 		}
 	}
 }

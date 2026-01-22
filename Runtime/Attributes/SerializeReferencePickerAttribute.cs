@@ -4,11 +4,11 @@ namespace Kryz.UnityUtils
 {
 	public class SerializeReferencePickerAttribute : PropertyAttribute
 	{
-		public readonly bool AllowDuplicates;
+		public readonly bool RemoveDuplicates;
 
-		public SerializeReferencePickerAttribute(bool allowDuplicates = false)
+		public SerializeReferencePickerAttribute(bool removeDuplicates = false)
 		{
-			AllowDuplicates = allowDuplicates;
+			RemoveDuplicates = removeDuplicates;
 		}
 	}
 }
