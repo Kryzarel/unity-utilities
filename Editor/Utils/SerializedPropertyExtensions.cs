@@ -66,7 +66,7 @@ namespace Kryz.UnityUtils.Editor
 					{
 						list = l;
 						obj = l[index];
-						type = type.GetElementType();
+						type = type.IsGenericType ? type.GenericTypeArguments[0] : type.GetElementType();
 					}
 				}
 			}
