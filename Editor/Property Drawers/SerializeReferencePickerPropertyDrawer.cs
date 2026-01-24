@@ -14,17 +14,20 @@ namespace Kryz.UnityUtils.Editor
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			SerializedPropertyExtensions.SerializedPropertyInfo info = property.GetInfo();
+			// SerializedPropertyExtensions.SerializedPropertyInfo info = property.GetInfo();
 
 			var pickerAttribute = (SerializeReferencePickerAttribute)attribute;
-			if (pickerAttribute.RemoveDuplicates && IsDuplicate(info))
+			if (pickerAttribute.RemoveDuplicates && IsDuplicate(property))
 			{
 				SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 			}
 
+			// >>> This seems to have been fixed in Unity 6.3. Maybe it was fixed before that, but I haven't tested other Unity versions.
 			// fieldInfo.FieldType doesn't work if the object is in a list or array
 			// property.managedReferenceFieldTypename gives you the type as a string and formatted in a really stupid way
-			Type baseType = info.Type;
+			// Type baseType = info.Type;
+
+			Type baseType = fieldInfo.FieldType;
 			Type? currentType = property.managedReferenceValue?.GetType();
 
 			// Reassign if the type of the variable changed and the serialized reference no longer matches the variable type
@@ -56,14 +59,17 @@ namespace Kryz.UnityUtils.Editor
 			return EditorGUI.GetPropertyHeight(property, includeChildren: true);
 		}
 
-		private bool IsDuplicate(SerializedPropertyExtensions.SerializedPropertyInfo info)
+		private bool IsDuplicate(SerializedProperty property)
 		{
-			if (info.Value != null && existing.TryGetValue(info.Value, out string propertyPath))
+			if (property.managedReferenceValue == null)
+				return false;
+
+			if (!existing.TryGetValue(property.managedReferenceValue, out string propertyPath))
 			{
-				return !propertyPath.Equals(info.Property.propertyPath, StringComparison.OrdinalIgnoreCase);
+				existing[property.managedReferenceValue] = property.propertyPath;
+				return false;
 			}
-			existing[info.Property] = info.Property.propertyPath;
-			return false;
+			return !propertyPath.Equals(property.propertyPath, StringComparison.OrdinalIgnoreCase);
 		}
 
 		private static void SetManagedReferenceValue(SerializedProperty property, Type? type, bool overwriteIfSameType)
