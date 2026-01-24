@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Kryz.Utils;
 using UnityEditor;
@@ -14,20 +15,13 @@ namespace Kryz.UnityUtils.Editor
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			// SerializedPropertyExtensions.SerializedPropertyInfo info = property.GetInfo();
-
 			var pickerAttribute = (SerializeReferencePickerAttribute)attribute;
 			if (pickerAttribute.RemoveDuplicates && IsDuplicate(property))
 			{
 				SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 			}
 
-			// >>> This seems to have been fixed in Unity 6.3. Maybe it was fixed before that, but I haven't tested other Unity versions.
-			// fieldInfo.FieldType doesn't work if the object is in a list or array
-			// property.managedReferenceFieldTypename gives you the type as a string and formatted in a really stupid way
-			// Type baseType = info.Type;
-
-			Type baseType = fieldInfo.FieldType;
+			Type baseType = GetBaseType(fieldInfo.FieldType);
 			Type? currentType = property.managedReferenceValue?.GetType();
 
 			// Reassign if the type of the variable changed and the serialized reference no longer matches the variable type
@@ -52,6 +46,15 @@ namespace Kryz.UnityUtils.Editor
 
 			GUI.backgroundColor = color;
 			EditorGUI.PropertyField(position, property, label, includeChildren: true);
+		}
+
+		private static Type GetBaseType(Type type)
+		{
+			if (typeof(IList).IsAssignableFrom(type))
+			{
+				return type.IsGenericType ? type.GenericTypeArguments[0] : typeof(object);
+			}
+			return type;
 		}
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
