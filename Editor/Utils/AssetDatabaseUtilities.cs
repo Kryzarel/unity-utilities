@@ -50,9 +50,7 @@ namespace Kryz.UnityUtils.Editor
 
 		public static string GetPathRelativeToResources(string path)
 		{
-			if (string.IsNullOrEmpty(path))
-				return string.Empty;
-
+			if (string.IsNullOrEmpty(path)) return string.Empty;
 			ReadOnlySpan<char> result = GetPathRelativeToResources(path.AsSpan());
 			return result.IsEmpty ? string.Empty : new string(result);
 		}
