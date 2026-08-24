@@ -21,11 +21,12 @@ namespace Kryz.UnityUtils.Editor
 				SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 			}
 
-			Type baseType = GetBaseType(fieldInfo.FieldType);
-			Type? currentType = property.managedReferenceValue?.GetType();
+			Type elementType = GetElementType(fieldInfo.FieldType);
+			object? obj = property.managedReferenceValue;
+			Type? currentType = obj != null ? GetElementType(obj.GetType()) : null;
 
 			// Reassign if the type of the variable changed and the serialized reference no longer matches the variable type
-			if (!baseType.IsAssignableFrom(currentType))
+			if (!elementType.IsAssignableFrom(currentType))
 			{
 				SetManagedReferenceValue(property, null, overwriteIfSameType: false);
 			}
@@ -36,7 +37,7 @@ namespace Kryz.UnityUtils.Editor
 			Rect buttonRect = GetButtonRect(position);
 			GetPropertiesAndTypesForTargetObjects(property, out SerializedProperty[] properties, out Type?[] propertyTypes);
 
-			TypeCache.TypeCollection types = TypeCache.GetTypesDerivedFrom(baseType);
+			TypeCache.TypeCollection types = TypeCache.GetTypesDerivedFrom(elementType);
 
 			if (GUI.Button(buttonRect, GetButtonGuiContent(types, propertyTypes)))
 			{
@@ -48,9 +49,13 @@ namespace Kryz.UnityUtils.Editor
 			EditorGUI.PropertyField(position, property, label, includeChildren: true);
 		}
 
-		private static Type GetBaseType(Type type)
+		private static Type GetElementType(Type type)
 		{
-			if (typeof(IList).IsAssignableFrom(type))
+			if (type.IsArray)
+			{
+				return type.GetElementType();
+			}
+			else if (typeof(IList).IsAssignableFrom(type))
 			{
 				return type.IsGenericType ? type.GenericTypeArguments[0] : typeof(object);
 			}
