@@ -23,7 +23,9 @@ namespace Kryz.UnityUtils.Editor
 				get => base.value;
 				set
 				{
-					// Force notify whenever the user clicks an option on the dropdown, even the property didn't actually change
+					// Force notify whenever the user clicks an option on the dropdown.
+					// This is needed for multi object editing to work properly, since the dropdown will default to the value of ONE of the objects in the selection
+					// And if you click on that value, it won't change ANY selected object, even if they have different values than the one that appears selected
 					base.value = typeof(Dummy);
 					base.value = value;
 				}
