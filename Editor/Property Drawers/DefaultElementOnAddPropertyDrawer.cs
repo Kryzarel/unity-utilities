@@ -41,7 +41,19 @@ namespace Kryz.UnityUtils.Editor
 
 			property.InsertArrayElementAtIndex(index);
 			SerializedProperty element = property.GetArrayElementAtIndex(index);
-			element.boxedValue = GetDefaultValue(type);
+
+			if (element.propertyType == SerializedPropertyType.ManagedReference)
+			{
+				element.managedReferenceValue = null;
+			}
+			else if (!type.IsAbstract)
+			{
+				element.boxedValue = Activator.CreateInstance(type);
+			}
+			else
+			{
+				Debug.LogError($"Can't instantiate object of type {type.FullName}");
+			}
 
 			property.serializedObject.ApplyModifiedProperties();
 		}
@@ -57,11 +69,6 @@ namespace Kryz.UnityUtils.Editor
 				return type.IsGenericType ? type.GenericTypeArguments[0] : typeof(object);
 			}
 			return type;
-		}
-
-		private static object? GetDefaultValue(Type type)
-		{
-			return type.IsValueType ? Activator.CreateInstance(type) : null;
 		}
 	}
 }
