@@ -37,12 +37,15 @@ namespace Kryz.UnityUtils.Editor
 			}
 		}
 
+		private static readonly Dictionary<Type, HashSet<string>> managedPropertyPaths = new();
+
 		public override VisualElement CreatePropertyGUI(SerializedProperty property)
 		{
 			SerializeReferencePickerAttribute pickerAttribute = (SerializeReferencePickerAttribute)attribute;
 
 			string propertyPath = property.propertyPath;
 			SerializedObject serializedObject = property.serializedObject;
+			GetPropertyPaths(property).Add(propertyPath);
 
 			Type elementType = GetElementType(fieldInfo.FieldType);
 			List<Type> types = TypeCache.GetTypesDerivedFrom(elementType).Where(t => !t.IsAbstract).OrderBy(t => t.FullName).Prepend(null!).ToList();
@@ -99,7 +102,7 @@ namespace Kryz.UnityUtils.Editor
 			{
 				serializedObject.Update();
 				SerializedProperty property = serializedObject.FindProperty(propertyPath);
-				UpdateWithMultiSelectSupport(updateFromUser, type, pickerAttribute, elementType, property);
+				UpdateWithMultiSelectSupport(updateFromUser, type, pickerAttribute.RemoveDuplicates, elementType, property);
 
 				Type? currentType = property.managedReferenceValue?.GetType();
 				popup.SetValueWithoutNotify(currentType!);
@@ -109,7 +112,19 @@ namespace Kryz.UnityUtils.Editor
 			return root;
 		}
 
-		private static void UpdateWithMultiSelectSupport(bool updateFromUser, Type? type, SerializeReferencePickerAttribute pickerAttribute, Type elementType, SerializedProperty property)
+		private static HashSet<string> GetPropertyPaths(SerializedProperty property)
+		{
+			Type objType = property.serializedObject.targetObject.GetType();
+
+			if (!managedPropertyPaths.TryGetValue(objType, out HashSet<string> propertyPaths))
+			{
+				managedPropertyPaths[objType] = propertyPaths = new HashSet<string>();
+			}
+
+			return propertyPaths;
+		}
+
+		private static void UpdateWithMultiSelectSupport(bool updateFromUser, Type? type, bool removeDuplicates, Type elementType, SerializedProperty property)
 		{
 			if (property.serializedObject.isEditingMultipleObjects)
 			{
@@ -117,16 +132,16 @@ namespace Kryz.UnityUtils.Editor
 
 				foreach (SerializedProperty prop in properties)
 				{
-					UpdateProperty(updateFromUser, type, pickerAttribute, elementType, prop);
+					UpdateProperty(updateFromUser, type, removeDuplicates, elementType, prop);
 				}
 			}
 			else
 			{
-				UpdateProperty(updateFromUser, type, pickerAttribute, elementType, property);
+				UpdateProperty(updateFromUser, type, removeDuplicates, elementType, property);
 			}
 		}
 
-		private static void UpdateProperty(bool updateFromUser, Type? type, SerializeReferencePickerAttribute pickerAttribute, Type elementType, SerializedProperty property)
+		private static void UpdateProperty(bool updateFromUser, Type? type, bool removeDuplicates, Type elementType, SerializedProperty property)
 		{
 			if (updateFromUser)
 			{
@@ -141,9 +156,9 @@ namespace Kryz.UnityUtils.Editor
 				{
 					SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 				}
-				else if (pickerAttribute.RemoveDuplicates && IsDuplicate(property))
+				else if (removeDuplicates && IsDuplicate(property))
 				{
-					SetManagedReferenceValue(property, null, overwriteIfSameType: true);
+					SetManagedReferenceValue(property, propType, overwriteIfSameType: true);
 				}
 			}
 		}
@@ -189,21 +204,16 @@ namespace Kryz.UnityUtils.Editor
 			if (property.managedReferenceValue == null)
 				return false;
 
-			if (!property.isArray)
-				return false;
-
-			for (int i = 0; i < property.arraySize; i++)
+			foreach (string path in GetPropertyPaths(property))
 			{
-				SerializedProperty iProp = property.GetArrayElementAtIndex(i);
+				SerializedProperty prop = property.serializedObject.FindProperty(path);
 
-				for (int j = i; j < property.arraySize; j++)
+				if (prop == null || prop.propertyType == SerializedPropertyType.ManagedReference)
+					continue;
+
+				if (prop.managedReferenceId == property.managedReferenceId)
 				{
-					SerializedProperty jProp = property.GetArrayElementAtIndex(j);
-
-					if (iProp.managedReferenceValue == jProp.managedReferenceValue)
-					{
-						return true;
-					}
+					return true;
 				}
 			}
 			return false;
