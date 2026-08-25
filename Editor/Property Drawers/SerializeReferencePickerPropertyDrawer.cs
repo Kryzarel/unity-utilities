@@ -208,7 +208,7 @@ namespace Kryz.UnityUtils.Editor
 			{
 				SerializedProperty prop = property.serializedObject.FindProperty(path);
 
-				if (prop == null || prop.propertyType == SerializedPropertyType.ManagedReference)
+				if (prop == null || prop.propertyType != SerializedPropertyType.ManagedReference)
 					continue;
 
 				if (prop.managedReferenceId == property.managedReferenceId)
