@@ -1,9 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Kryz.Utils;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
 namespace Kryz.UnityUtils.Editor
@@ -11,24 +14,240 @@ namespace Kryz.UnityUtils.Editor
 	[CustomPropertyDrawer(typeof(SerializeReferencePickerAttribute))]
 	public class SerializeReferencePickerPropertyDrawer : PropertyDrawer
 	{
-		private readonly Dictionary<object, string> existing = new();
+		private sealed class Dummy { }
+
+		public class PopupFieldCustom : PopupField<Type>
+		{
+			public override Type value
+			{
+				get => base.value;
+				set
+				{
+					// Force notify whenever the user clicks an option on the dropdown, even the property didn't actually change
+					base.value = typeof(Dummy);
+					base.value = value;
+				}
+			}
+
+			public PopupFieldCustom(string label, List<Type> choices, int defaultIndex, Func<Type, string>? formatSelectedValueCallback = null, Func<Type, string>? formatListItemCallback = null)
+				: base(label, choices, defaultIndex, formatSelectedValueCallback, formatListItemCallback)
+			{
+			}
+		}
+
+		public override VisualElement CreatePropertyGUI(SerializedProperty property)
+		{
+			SerializeReferencePickerAttribute pickerAttribute = (SerializeReferencePickerAttribute)attribute;
+
+			string propertyPath = property.propertyPath;
+			SerializedObject serializedObject = property.serializedObject;
+
+			Type elementType = GetElementType(fieldInfo.FieldType);
+			List<Type> types = TypeCache.GetTypesDerivedFrom(elementType).Where(t => !t.IsAbstract).OrderBy(t => t.FullName).Prepend(null!).ToList();
+
+			VisualElement root = new();
+
+			PopupFieldCustom popup = new(property.displayName, types, 0, t => FormatSelectedType(t, types, serializedObject, propertyPath), FormatType);
+			popup.style.flexGrow = 1;
+			popup.style.marginLeft = 0;
+			popup.pickingMode = PickingMode.Ignore; // Ignore input on the popup parent element
+			popup.AddToClassList("unity-base-field__aligned");
+
+			popup.labelElement.pickingMode = PickingMode.Ignore; // And on the label as well
+			popup.labelElement.AddToClassList("unity-property-field__label");
+
+			VisualElement popupButton = popup.Q<VisualElement>(className: "unity-base-popup-field__input");
+			popupButton.style.backgroundColor = new Color(0, 0.275f, 0, 1);
+			popupButton.pickingMode = PickingMode.Position; // Enable input on the popup button only
+
+			TextElement popupButtonText = popupButton.Q<TextElement>();
+			popupButtonText.style.unityTextAlign = TextAnchor.MiddleCenter;
+
+			PropertyField propertyField = new(property);
+			propertyField.Bind(property.serializedObject);
+			root.Add(propertyField);
+
+			propertyField.RegisterCallback<GeometryChangedEvent>(evt =>
+			{
+				// Disable the original PropertyField label and put the PopupField in its place.
+				// Since we disabled the popup's input except for the button, clicking the label or any empty space
+				// will open the foldout, but clicking the popup button itself will open the popup dropdown list.
+				VisualElement element = (VisualElement)evt.target;
+				Label label = element.Q<Label>();
+
+				if (label != null)
+				{
+					label.style.display = DisplayStyle.None;
+					label.parent.Add(popup);
+				}
+			});
+
+			UpdatePicker();
+
+			popup.RegisterValueChangedCallback(evt =>
+			{
+				if (evt.newValue == typeof(Dummy)) return; // This is so fucking stupid omg... Unity can shove UI Toolkit somwhere..
+				UpdatePicker(updateFromUser: true, evt.newValue);
+			});
+
+			// Re-evaluate the popup when the inspector is rebound/updated.
+			root.RegisterCallback<AttachToPanelEvent>(_ => { UpdatePicker(); });
+
+			void UpdatePicker(bool updateFromUser = false, Type? type = null)
+			{
+				serializedObject.Update();
+				SerializedProperty property = serializedObject.FindProperty(propertyPath);
+				UpdateWithMultiSelectSupport(updateFromUser, type, pickerAttribute, elementType, property);
+
+				Type? currentType = property.managedReferenceValue?.GetType();
+				popup.SetValueWithoutNotify(currentType!);
+				popup.tooltip = popup.value?.FullName;
+			}
+
+			return root;
+		}
+
+		private static void UpdateWithMultiSelectSupport(bool updateFromUser, Type? type, SerializeReferencePickerAttribute pickerAttribute, Type elementType, SerializedProperty property)
+		{
+			if (property.serializedObject.isEditingMultipleObjects)
+			{
+				GetPropertiesAndTypesForTargetObjects(property, out SerializedProperty[] properties, out _);
+
+				foreach (SerializedProperty prop in properties)
+				{
+					UpdateProperty(updateFromUser, type, pickerAttribute, elementType, prop);
+				}
+			}
+			else
+			{
+				UpdateProperty(updateFromUser, type, pickerAttribute, elementType, property);
+			}
+		}
+
+		private static void UpdateProperty(bool updateFromUser, Type? type, SerializeReferencePickerAttribute pickerAttribute, Type elementType, SerializedProperty property)
+		{
+			if (updateFromUser)
+			{
+				SetManagedReferenceValue(property, type, overwriteIfSameType: false);
+			}
+			else
+			{
+				Type? propType = property.managedReferenceValue?.GetType();
+
+				// Reassign if the type of the variable changed and the serialized reference no longer matches the variable type
+				if (propType != null && !elementType.IsAssignableFrom(propType))
+				{
+					SetManagedReferenceValue(property, null, overwriteIfSameType: true);
+				}
+				else if (pickerAttribute.RemoveDuplicates && IsDuplicate(property))
+				{
+					SetManagedReferenceValue(property, null, overwriteIfSameType: true);
+				}
+			}
+		}
+
+		private static Type GetElementType(Type type)
+		{
+			if (type.IsArray)
+			{
+				return type.GetElementType();
+			}
+			else if (typeof(IList).IsAssignableFrom(type))
+			{
+				return type.IsGenericType ? type.GenericTypeArguments[0] : typeof(object);
+			}
+			return type;
+		}
+
+		private static string FormatType(Type type)
+		{
+			return type == null ? "Null" : type.Name;
+		}
+
+		private string FormatSelectedType(Type type, List<Type> types, SerializedObject serializedObject, string propertyPath)
+		{
+			if (types.Count == 1)
+			{
+				return "No implementations";
+			}
+
+			if (serializedObject.isEditingMultipleObjects)
+			{
+				SerializedProperty property = serializedObject.FindProperty(propertyPath);
+				GetPropertiesAndTypesForTargetObjects(property, out _, out Type?[] propertyTypes);
+				bool multipleValues = propertyTypes.Skip(1).Any(t => t != propertyTypes[0]);
+				return multipleValues ? "Multiple values" : FormatType(type);
+			}
+
+			return FormatType(type);
+		}
+
+		private static bool IsDuplicate(SerializedProperty property)
+		{
+			if (property.managedReferenceValue == null)
+				return false;
+
+			if (!property.isArray)
+				return false;
+
+			for (int i = 0; i < property.arraySize; i++)
+			{
+				SerializedProperty iProp = property.GetArrayElementAtIndex(i);
+
+				for (int j = i; j < property.arraySize; j++)
+				{
+					SerializedProperty jProp = property.GetArrayElementAtIndex(j);
+
+					if (iProp.managedReferenceValue == jProp.managedReferenceValue)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		private static void SetManagedReferenceValue(SerializedProperty property, Type? type, bool overwriteIfSameType)
+		{
+			if (overwriteIfSameType || type != property.managedReferenceValue?.GetType())
+			{
+				property.managedReferenceValue = type == null ? null : ObjectCreator.Create(type);
+				property.serializedObject.ApplyModifiedProperties();
+			}
+		}
+
+		private static void GetPropertiesAndTypesForTargetObjects(SerializedProperty property, out SerializedProperty[] properties, out Type?[] types)
+		{
+			Object[] objects = property.serializedObject.targetObjects;
+
+			properties = new SerializedProperty[objects.Length];
+			types = new Type[objects.Length];
+
+			for (int i = 0; i < objects.Length; i++)
+			{
+				SerializedObject serializedObject = new(objects[i]);
+				properties[i] = serializedObject.FindProperty(property.propertyPath);
+				types[i] = properties[i]?.managedReferenceValue?.GetType();
+			}
+		}
 
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
-			var pickerAttribute = (SerializeReferencePickerAttribute)attribute;
+			SerializeReferencePickerAttribute pickerAttribute = (SerializeReferencePickerAttribute)attribute;
+
 			if (pickerAttribute.RemoveDuplicates && IsDuplicate(property))
 			{
 				SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 			}
 
-			Type elementType = GetElementType(fieldInfo.FieldType);
 			object? obj = property.managedReferenceValue;
+			Type elementType = GetElementType(fieldInfo.FieldType);
 			Type? currentType = obj != null ? GetElementType(obj.GetType()) : null;
 
 			// Reassign if the type of the variable changed and the serialized reference no longer matches the variable type
-			if (!elementType.IsAssignableFrom(currentType))
+			if (currentType != null && !elementType.IsAssignableFrom(currentType))
 			{
-				SetManagedReferenceValue(property, null, overwriteIfSameType: false);
+				SetManagedReferenceValue(property, null, overwriteIfSameType: true);
 			}
 
 			Color color = GUI.backgroundColor;
@@ -49,44 +268,9 @@ namespace Kryz.UnityUtils.Editor
 			EditorGUI.PropertyField(position, property, label, includeChildren: true);
 		}
 
-		private static Type GetElementType(Type type)
-		{
-			if (type.IsArray)
-			{
-				return type.GetElementType();
-			}
-			else if (typeof(IList).IsAssignableFrom(type))
-			{
-				return type.IsGenericType ? type.GenericTypeArguments[0] : typeof(object);
-			}
-			return type;
-		}
-
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
 		{
 			return EditorGUI.GetPropertyHeight(property, includeChildren: true);
-		}
-
-		private bool IsDuplicate(SerializedProperty property)
-		{
-			if (property.managedReferenceValue == null)
-				return false;
-
-			if (!existing.TryGetValue(property.managedReferenceValue, out string propertyPath))
-			{
-				existing[property.managedReferenceValue] = property.propertyPath;
-				return false;
-			}
-			return !propertyPath.Equals(property.propertyPath, StringComparison.OrdinalIgnoreCase);
-		}
-
-		private static void SetManagedReferenceValue(SerializedProperty property, Type? type, bool overwriteIfSameType)
-		{
-			if (overwriteIfSameType || type != property.managedReferenceValue?.GetType())
-			{
-				property.managedReferenceValue = type == null ? null : ObjectCreator.Create(type);
-				property.serializedObject.ApplyModifiedProperties();
-			}
 		}
 
 		private static Rect GetButtonRect(Rect position)
@@ -139,21 +323,7 @@ namespace Kryz.UnityUtils.Editor
 		{
 			foreach (SerializedProperty property in properties)
 			{
-				SetManagedReferenceValue(property, type, overwriteIfSameType: true);
-			}
-		}
-
-		private static void GetPropertiesAndTypesForTargetObjects(SerializedProperty property, out SerializedProperty[] properties, out Type?[] types)
-		{
-			Object[] objects = property.serializedObject.targetObjects;
-			properties = new SerializedProperty[objects.Length];
-			types = new Type[objects.Length];
-
-			for (int i = 0; i < objects.Length; i++)
-			{
-				SerializedObject serializedObject = new(objects[i]);
-				properties[i] = serializedObject.FindProperty(property.propertyPath);
-				types[i] = properties[i]?.managedReferenceValue?.GetType();
+				SetManagedReferenceValue(property, type, overwriteIfSameType: false);
 			}
 		}
 	}
